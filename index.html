@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>今天吃什么？V2.0</title>
+    <title>今天吃什么？V3.0 探店版</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body {
@@ -13,182 +13,241 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
             font-family: 'PingFang SC', sans-serif;
         }
         
         .container {
             text-align: center;
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             padding: 30px 20px;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             width: 90%;
             max-width: 400px;
+            backdrop-filter: blur(10px);
         }
 
-        h1 {
-            color: #333;
-            font-size: 22px;
-            margin-bottom: 20px;
-        }
+        h1 { color: #333; font-size: 22px; margin-bottom: 20px; }
 
         /* 分类标签区域 */
         .category-box {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 10px;
-            margin-bottom: 30px;
+            gap: 8px;
+            margin-bottom: 25px;
         }
 
         .tag {
-            padding: 8px 16px;
-            border-radius: 20px;
+            padding: 6px 14px;
+            border-radius: 16px;
             background-color: #f0f2f5;
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
             transition: all 0.3s;
-            border: 1px solid transparent;
         }
 
-        /* 选中状态的标签 */
         .tag.active {
-            background-color: #e3f2fd;
-            color: #007bff;
-            border-color: #007bff;
+            background-color: #6c5ce7;
+            color: white;
             font-weight: bold;
         }
 
-        #result {
+        /* 结果展示区 */
+        #result-area {
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #food-name {
             font-size: 42px;
             font-weight: bold;
-            color: #2c3e50;
-            margin: 30px 0;
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            color: #2d3436;
+            margin-bottom: 10px;
         }
 
-        button {
-            background-color: #007bff;
+        /* 辅助信息（排队预测） */
+        #meta-info {
+            font-size: 14px;
+            color: #636e72;
+            height: 20px; /* 占位防止抖动 */
+        }
+
+        /* 按钮组 */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .main-btn {
+            background-color: #6c5ce7;
             color: white;
             border: none;
-            padding: 15px 50px;
+            padding: 15px 60px;
             font-size: 18px;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,123,255,0.3);
+            box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
             width: 80%;
+            transition: transform 0.1s;
         }
 
-        button:active { transform: scale(0.98); }
+        .main-btn:active { transform: scale(0.98); }
+
+        /* 导航按钮（默认隐藏，结果出来后显示） */
+        .nav-btn {
+            background-color: #00b894;
+            color: white;
+            text-decoration: none; /* 去掉下划线 */
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            display: none; /* 初始隐藏 */
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);
+            width: 60%;
+            justify-content: center;
+        }
+        
+        /* 不同的排队状态颜色 */
+        .status-green { color: #00b894; font-weight: bold; }
+        .status-red { color: #d63031; font-weight: bold; }
+
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🍽️ 今天去哪吃？</h1>
+        <h1>📍 今天去哪吃？V3.0</h1>
         
-        <div class="category-box" id="categoryBox">
-            </div>
+        <div class="category-box" id="categoryBox"></div>
 
-        <div id="result">选个分类吧</div>
-        <button id="actionBtn" onclick="toggleRandom()">开始纠结</button>
+        <div id="result-area">
+            <div id="food-name">准备好了</div>
+            <div id="meta-info"></div>
+        </div>
+
+        <div class="btn-group">
+            <button id="actionBtn" class="main-btn" onclick="toggleRandom()">开始纠结</button>
+            <a id="navBtn" class="nav-btn" href="#" target="_blank">
+                🗺️ 导航去最近的一家
+            </a>
+        </div>
     </div>
 
     <script>
-        // --- V2.0 数据结构：带分类的菜单库 ---
-        // 你可以随意在这里增加分类和店铺
+        // 菜单配置
         const foodMap = {
-            "全部": [], // 这是一个特殊分类，程序会自动处理
+            "全部": [],
             "快乐水": ["蜜雪冰城", "喜茶", "瑞幸咖啡", "霸王茶姬", "星巴克"],
-            "碳水大餐": ["兰州拉面", "沙县小吃", "螺蛳粉", "水饺", "意大利面"],
-            "肉肉肉": ["烤肉", "火锅", "肯德基", "麦当劳", "黄焖鸡"],
-            "清淡点": ["轻食沙拉", "白粥", "赛百味", "便利店", "去喝汤"]
+            "碳水大餐": ["兰州拉面", "沙县小吃", "螺蛳粉", "麦当劳", "汉堡王"],
+            "肉肉肉": ["烤肉", "海底捞", "肯德基", "黄焖鸡", "潮汕牛肉火锅"],
+            "清淡点": ["轻食沙拉", "袁记云饺", "赛百味", "便利店", "粥铺"]
         };
 
-        let currentCategory = "全部"; // 当前选中的分类
-        let currentPool = []; // 当前抽签池
+        // 模拟的排队文案库（趣味性功能）
+        const queueStatus = [
+            { text: "⚡ 运气爆棚！现在应该不用排队", color: "status-green" },
+            { text: "😌 稍微有点人，预计排队 5 分钟", color: "status-green" },
+            { text: "😐 饭点高峰期，可能要等位哦", color: "#e17055" },
+            { text: "🔥 火爆！建议提前在手机上取号", color: "status-red" }
+        ];
+
+        let currentCategory = "全部";
+        let currentPool = [];
         let timer = null;
         let isRunning = false;
 
-        const resultDiv = document.getElementById('result');
+        const foodNameDiv = document.getElementById('food-name');
+        const metaInfoDiv = document.getElementById('meta-info');
         const btn = document.getElementById('actionBtn');
+        const navBtn = document.getElementById('navBtn');
         const categoryBox = document.getElementById('categoryBox');
 
-        // 初始化：生成所有标签
         function init() {
-            // 1. 把所有具体菜品合并到“全部”里
             let allFoods = [];
             for (let key in foodMap) {
-                if (key !== "全部") {
-                    allFoods = allFoods.concat(foodMap[key]);
-                }
+                if (key !== "全部") allFoods = allFoods.concat(foodMap[key]);
             }
             foodMap["全部"] = allFoods;
             currentPool = allFoods;
 
-            // 2. 渲染标签按钮
             for (let key in foodMap) {
                 const span = document.createElement('div');
-                span.className = key === "全部" ? "tag active" : "tag"; // 默认选中全部
+                span.className = key === "全部" ? "tag active" : "tag";
                 span.innerText = key;
                 span.onclick = () => switchCategory(key, span);
                 categoryBox.appendChild(span);
             }
-            
-            resultDiv.innerText = "准备好了";
         }
 
-        // 切换分类逻辑
         function switchCategory(key, element) {
-            if (isRunning) return; // 正在跑的时候不能切换
-
-            // 更新样式
+            if (isRunning) return;
             document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
             element.classList.add('active');
-
-            // 更新数据
             currentCategory = key;
             currentPool = foodMap[key];
-            resultDiv.innerText = `吃${key}?`;
+            foodNameDiv.innerText = `吃${key}?`;
+            // 切换分类时隐藏导航按钮和辅助信息
+            navBtn.style.display = "none";
+            metaInfoDiv.innerText = "";
         }
 
-        // 开始/停止逻辑（复用之前的，稍作修改）
         function toggleRandom() {
             if (isRunning) {
+                // 停止逻辑
                 clearInterval(timer);
                 
-                // 放烟花
-                confetti({
-                    particleCount: 120,
-                    spread: 80,
-                    origin: { y: 0.6 }
-                });
+                // 1. 放烟花
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 
+                // 2. 按钮变回蓝色
                 btn.innerText = "不行，换一个";
-                btn.style.backgroundColor = "#007bff"; 
+                btn.style.backgroundColor = "#6c5ce7"; 
+                
+                // 3. 获取最终选中的食物名称
+                const finalFood = foodNameDiv.innerText;
+
+                // 4. 生成随机排队状态 (Mock Data)
+                const status = queueStatus[Math.floor(Math.random() * queueStatus.length)];
+                metaInfoDiv.innerHTML = `<span class="${status.color}">${status.text}</span>`;
+
+                // 5. 显示导航按钮，并配置链接
+                // 使用高德地图网页版搜索接口，兼容性最好
+                navBtn.href = `https://m.amap.com/search/mapview/keywords=${finalFood}`;
+                navBtn.style.display = "flex"; 
+
                 isRunning = false;
             } else {
+                // 开始逻辑
                 if (currentPool.length === 0) {
-                    alert("这个分类下没有菜品哦！");
+                    alert("没菜啦！");
                     return;
                 }
                 btn.innerText = "停！";
-                btn.style.backgroundColor = "#ff4757"; 
-                isRunning = true;
+                btn.style.backgroundColor = "#ff7675"; 
                 
+                // 隐藏上次的导航和排队信息
+                navBtn.style.display = "none";
+                metaInfoDiv.innerText = "";
+                
+                isRunning = true;
                 timer = setInterval(() => {
                     const randomIndex = Math.floor(Math.random() * currentPool.length);
-                    resultDiv.innerText = currentPool[randomIndex];
+                    foodNameDiv.innerText = currentPool[randomIndex];
                 }, 50);
             }
         }
 
-        // 启动程序
         init();
     </script>
 </body>
