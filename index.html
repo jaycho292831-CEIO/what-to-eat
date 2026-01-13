@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>今天吃什么？- 纠结终结者</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         /* 页面整体样式：简约现代风 */
         body {
@@ -91,6 +92,12 @@
             if (isRunning) {
                 // 如果正在跑，就停下来
                 clearInterval(timer);
+                // 核心改动：停止时放烟花！
+                confetti({
+                    particleCount: 100, // 纸屑数量
+                    spread: 70,         // 扩散范围
+                    origin: { y: 0.6 }  // 发射位置
+                });
                 btn.innerText = "不行，换一个";
                 btn.style.backgroundColor = "#007bff"; // 恢复蓝色
                 isRunning = false;
@@ -111,3 +118,4 @@
 </body>
 
 </html>
+
