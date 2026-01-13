@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天吃什么？- 纠结终结者</title>
+    <style>
+        /* 页面整体样式：简约现代风 */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        
+        /* 卡片容器 */
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 400px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        /* 结果显示区域 */
+        #result {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 40px 0;
+            min-height: 60px; /* 防止抖动 */
+        }
+
+        /* 按钮样式 */
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0,123,255,0.3);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🤔 今天吃什么？</h1>
+        <div id="result">???</div>
+        <button id="actionBtn" onclick="toggleRandom()">开始</button>
+    </div>
+
+    <script>
+        // 菜单库：你可以随时在这里加你自己喜欢的菜
+        const foods = [
+            "麻辣烫", "肯德基", "火锅", "烧烤", "螺蛳粉", 
+            "沙县小吃", "兰州拉面", "日料", "韩式炸鸡", 
+            "麦当劳", "黄焖鸡", "减脂餐", "不吃了！"
+        ];
+
+        let timer = null;
+        let isRunning = false;
+        const resultDiv = document.getElementById('result');
+        const btn = document.getElementById('actionBtn');
+
+        function toggleRandom() {
+            if (isRunning) {
+                // 如果正在跑，就停下来
+                clearInterval(timer);
+                btn.innerText = "不行，换一个";
+                btn.style.backgroundColor = "#007bff"; // 恢复蓝色
+                isRunning = false;
+            } else {
+                // 如果没在跑，就开始跑
+                btn.innerText = "停！";
+                btn.style.backgroundColor = "#ff4757"; // 变成红色
+                isRunning = true;
+                
+                // 每50毫秒切换一次，制造快速闪动的效果
+                timer = setInterval(() => {
+                    const randomIndex = Math.floor(Math.random() * foods.length);
+                    resultDiv.innerText = foods[randomIndex];
+                }, 50);
+            }
+        }
+    </script>
+</body>
+</html>
