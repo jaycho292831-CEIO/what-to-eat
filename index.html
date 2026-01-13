@@ -3,119 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>今天吃什么？- 纠结终结者</title>
+    <title>今天吃什么？V2.0</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        /* 页面整体样式：简约现代风 */
         body {
             margin: 0;
             padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            font-family: 'PingFang SC', sans-serif;
         }
         
-        /* 卡片容器 */
         .container {
             text-align: center;
             background: white;
-            padding: 40px;
+            padding: 30px 20px;
             border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 80%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            width: 90%;
             max-width: 400px;
         }
 
         h1 {
             color: #333;
-            font-size: 24px;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        /* 分类标签区域 */
+        .category-box {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
             margin-bottom: 30px;
         }
 
-        /* 结果显示区域 */
-        #result {
-            font-size: 48px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin: 40px 0;
-            min-height: 60px; /* 防止抖动 */
+        .tag {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background-color: #f0f2f5;
+            color: #666;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
         }
 
-        /* 按钮样式 */
+        /* 选中状态的标签 */
+        .tag.active {
+            background-color: #e3f2fd;
+            color: #007bff;
+            border-color: #007bff;
+            font-weight: bold;
+        }
+
+        #result {
+            font-size: 42px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 30px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         button {
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 15px 40px;
+            padding: 15px 50px;
             font-size: 18px;
             border-radius: 50px;
             cursor: pointer;
-            transition: transform 0.1s, background-color 0.3s;
-            box-shadow: 0 4px 6px rgba(0,123,255,0.3);
+            box-shadow: 0 4px 10px rgba(0,123,255,0.3);
+            width: 80%;
         }
 
-        button:active {
-            transform: scale(0.95);
-        }
-
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
+        button:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🤔 今天吃什么？</h1>
-        <div id="result">???</div>
-        <button id="actionBtn" onclick="toggleRandom()">开始</button>
+        <h1>🍽️ 今天去哪吃？</h1>
+        
+        <div class="category-box" id="categoryBox">
+            </div>
+
+        <div id="result">选个分类吧</div>
+        <button id="actionBtn" onclick="toggleRandom()">开始纠结</button>
     </div>
 
     <script>
-        // 菜单库：你可以随时在这里加你自己喜欢的菜
-        const foods = [
-            "土鸡", "烧鸡","老母鸡", "肥猪", "瘦猪", "王八粉", 
-            "满汉全席", "加州拉面", "神料", "韩式炸蛋", 
-            "工作做完了吗？", "不吃了！"
-        ];
+        // --- V2.0 数据结构：带分类的菜单库 ---
+        // 你可以随意在这里增加分类和店铺
+        const foodMap = {
+            "全部": [], // 这是一个特殊分类，程序会自动处理
+            "快乐水": ["蜜雪冰城", "喜茶", "瑞幸咖啡", "霸王茶姬", "星巴克"],
+            "碳水大餐": ["兰州拉面", "沙县小吃", "螺蛳粉", "水饺", "意大利面"],
+            "肉肉肉": ["烤肉", "火锅", "肯德基", "麦当劳", "黄焖鸡"],
+            "清淡点": ["轻食沙拉", "白粥", "赛百味", "便利店", "去喝汤"]
+        };
 
+        let currentCategory = "全部"; // 当前选中的分类
+        let currentPool = []; // 当前抽签池
         let timer = null;
         let isRunning = false;
+
         const resultDiv = document.getElementById('result');
         const btn = document.getElementById('actionBtn');
+        const categoryBox = document.getElementById('categoryBox');
 
+        // 初始化：生成所有标签
+        function init() {
+            // 1. 把所有具体菜品合并到“全部”里
+            let allFoods = [];
+            for (let key in foodMap) {
+                if (key !== "全部") {
+                    allFoods = allFoods.concat(foodMap[key]);
+                }
+            }
+            foodMap["全部"] = allFoods;
+            currentPool = allFoods;
+
+            // 2. 渲染标签按钮
+            for (let key in foodMap) {
+                const span = document.createElement('div');
+                span.className = key === "全部" ? "tag active" : "tag"; // 默认选中全部
+                span.innerText = key;
+                span.onclick = () => switchCategory(key, span);
+                categoryBox.appendChild(span);
+            }
+            
+            resultDiv.innerText = "准备好了";
+        }
+
+        // 切换分类逻辑
+        function switchCategory(key, element) {
+            if (isRunning) return; // 正在跑的时候不能切换
+
+            // 更新样式
+            document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+            element.classList.add('active');
+
+            // 更新数据
+            currentCategory = key;
+            currentPool = foodMap[key];
+            resultDiv.innerText = `吃${key}?`;
+        }
+
+        // 开始/停止逻辑（复用之前的，稍作修改）
         function toggleRandom() {
             if (isRunning) {
-                // 如果正在跑，就停下来
                 clearInterval(timer);
-                // 核心改动：停止时放烟花！
+                
+                // 放烟花
                 confetti({
-                    particleCount: 100, // 纸屑数量
-                    spread: 70,         // 扩散范围
-                    origin: { y: 0.6 }  // 发射位置
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
                 });
+
                 btn.innerText = "不行，换一个";
-                btn.style.backgroundColor = "#007bff"; // 恢复蓝色
+                btn.style.backgroundColor = "#007bff"; 
                 isRunning = false;
             } else {
-                // 如果没在跑，就开始跑
+                if (currentPool.length === 0) {
+                    alert("这个分类下没有菜品哦！");
+                    return;
+                }
                 btn.innerText = "停！";
-                btn.style.backgroundColor = "#ff4757"; // 变成红色
+                btn.style.backgroundColor = "#ff4757"; 
                 isRunning = true;
                 
-                // 每50毫秒切换一次，制造快速闪动的效果
                 timer = setInterval(() => {
-                    const randomIndex = Math.floor(Math.random() * foods.length);
-                    resultDiv.innerText = foods[randomIndex];
+                    const randomIndex = Math.floor(Math.random() * currentPool.length);
+                    resultDiv.innerText = currentPool[randomIndex];
                 }, 50);
             }
         }
+
+        // 启动程序
+        init();
     </script>
 </body>
-
 </html>
-
